@@ -1,0 +1,16 @@
+// swift-tools-version:5.9
+import PackageDescription
+
+let package = Package(
+    name: "Paperize",
+    platforms: [
+        .iOS(.v15),
+    ],
+    products: [
+        .library(name: "Paperize", targets: ["Paperize"]),
+    ],
+    targets: [
+        .target(name: "Paperize"),
+        .testTarget(name: "PaperizeTests", dependencies: ["Paperize"]),
+    ]
+)
