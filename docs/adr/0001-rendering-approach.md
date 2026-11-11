@@ -1,6 +1,6 @@
 # ADR-0001: How Paperize renders the "paper" look
 
-**Status:** Accepted
+**Status:** Accepted, updated 2026-11-11
 **Date:** 2026-11-10
 **Deciders:** Paperize maintainers
 
@@ -12,7 +12,7 @@ Daylight-style screens) with one switch:
 1. **Dimmed paper**: white turns into an off-white paper tone, and the screen loses some
    brightness.
 2. **Grayscale**: no color at all.
-3. **E-ink refresh**: screen changes should flash and ghost the way e-paper waveforms do.
+3. **Gentle refresh**: screen changes may fade a snapshot of the previous screen.
 
 Constraints:
 
@@ -41,7 +41,9 @@ The overlay stack, bottom to top:
 | Dim | normal, black at `dimming` alpha | unlit e-reader brightness |
 | Grain | `multiplyBlendMode`, tiled noise | paper texture |
 | Ghost | normal (low alpha) | snapshot of the previous screen, for e-ink ghosting. It was captured *with* the overlay, so it sits above the stack to avoid being processed twice |
-| Flash | `differenceBlendMode` / solid | refresh waveform: invert → black → paper |
+
+The overlay uses `CATransformLayer` as its backing layer so its children blend with the
+window content instead of being flattened into an opaque surface.
 
 The overlay has a very large `layer.zPosition`, so it renders above every sibling subview,
 including modal presentation containers added later. That way we don't have to swizzle
@@ -53,8 +55,8 @@ the overlay. Refreshes come from an explicit API (`Paperize.refresh()`), a Swift
 `.paperizeRefresh(on:)` modifier, or, if the app opts in to automatic mode, from
 `viewWillAppear`/`viewDidAppear` swizzling. `viewWillAppear` takes a cheap
 `snapshotView(afterScreenUpdates: false)` of the outgoing screen to use as the ghost.
-Every Nth refresh is a full flash. The rest are partial refreshes, the way real e-readers
-do it.
+Every Nth refresh uses a longer ghost fade. No refresh replaces, inverts, or darkens the
+current screen. Reduce Motion disables ghost animation when accessibility settings are respected.
 
 ## Options considered
 
@@ -113,8 +115,8 @@ swizzling.
 - **Easier:** one-line adoption; works on existing apps, including third-party SDK screens.
 - **Easier:** the waveform model is pure and unit-testable without a device.
 - **Harder:** we can't paperize the keyboard or status bar. This is documented as a limitation.
-- **Harder:** the full refresh flash is a strobe. We downgrade it to a non-flashing ghost
-  fade when *Reduce Motion* or *Dim Flashing Lights* is on.
+- **Simpler:** all refreshes are ghost fades. There is no brightness-pulse or inversion path,
+  including when accessibility preferences are opted out of.
 - **Revisit:** if a future iOS stops honoring blend filter strings, move to the
   `SwiftUI.Layer`/Metal shader route for SwiftUI, and to per-window `CAMetalLayer`
   post-processing for UIKit.
@@ -125,5 +127,5 @@ swizzling.
 3. [x] Waveform model + overlay playback, partial/full scheduling
 4. [x] Opt-in automatic refresh via view-controller appearance hooks
 5. [x] SwiftUI `.paperize()` and `.paperizeRefresh(on:)`
-6. [ ] Verify on device across iOS 15 through the latest release; record any blend-mode differences
+6. [ ] Verify on device across iOS 17 through the latest release; record any blend-mode differences
 7. [ ] Explore ordered dithering (Metal `layerEffect`, iOS 17+) as an optional "16-level gray" mode

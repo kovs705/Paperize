@@ -1,13 +1,13 @@
 import UIKit
 
 /// Makes the whole app look like it's on an e-ink display: grayscale, paper-toned, slightly
-/// dimmed, with optional e-paper refresh flashes and ghosting.
+/// dimmed, with optional previous-screen ghosting.
 ///
 /// ```swift
 /// Paperize.enable()                       // default look
 /// Paperize.enable(.newsprint)             // or a preset
 /// Paperize.configuration.dimming = 0.3    // tweak live
-/// Paperize.refresh(.full)                 // flash the screen like a page turn
+/// Paperize.refresh(.full)                 // gently fade the previous screen
 /// Paperize.disable()
 /// ```
 ///
@@ -32,8 +32,7 @@ public enum Paperize {
     ///
     /// - Parameters:
     ///   - configuration: The look to use. Pass `nil` to keep the current ``configuration``.
-    ///   - animated: If refreshes are enabled, the switch plays a full e-ink refresh.
-    ///     Otherwise it crossfades.
+    ///   - animated: Crossfades from the current appearance to the paper effect.
     public static func enable(_ configuration: PaperizeConfiguration? = nil, animated: Bool = true) {
         PaperizeController.shared.enable(configuration ?? self.configuration, animated: animated)
     }
@@ -52,7 +51,7 @@ public enum Paperize {
         }
     }
 
-    /// Plays an e-ink refresh now. Does nothing if Paperize is disabled or
+    /// Plays a gentle ghost fade now. Does nothing if Paperize is disabled or
     /// ``RefreshConfiguration/mode`` is `.off`.
     ///
     /// For a ghost of the *previous* screen, use ``performWithRefresh(_:_:)`` instead, which

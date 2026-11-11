@@ -32,11 +32,11 @@ struct SettingsView: View {
                     Text("Manual").tag(RefreshConfiguration.Mode.manual)
                     Text("Automatic").tag(RefreshConfiguration.Mode.automatic)
                 }
-                Button("Flash the screen") { Paperize.refresh(.full) }
+                Button("Refresh") { Paperize.refresh(.full) }
             } header: {
                 Text("E-ink refresh")
             } footer: {
-                Text("Automatic mode refreshes whenever a screen appears. Every 6th refresh is a full flash. Flashes become gentle fades when Reduce Motion or Dim Flashing Lights is on.")
+                Text("Automatic mode gently fades the previous screen whenever a screen appears. Reduce Motion disables these animations.")
             }
 
             Section("Preview (scoped, SwiftUI-only)") {

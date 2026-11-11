@@ -1,4 +1,3 @@
-import MediaAccessibility
 import UIKit
 
 /// Owns the global state: which windows are paperized, refresh scheduling, and ghosts.
@@ -20,9 +19,6 @@ final class PaperizeController: NSObject {
 
     /// Ghosts older than this are considered stale, for example after a cancelled interactive pop.
     private let ghostLifetime: TimeInterval = 1.5
-
-    /// Overrides the system accessibility checks. Tests use this.
-    var reducesFlashingOverride: Bool?
 
     // MARK: Enable / disable
 
@@ -48,13 +44,9 @@ final class PaperizeController: NSObject {
         )
 
         let windows = decoratableWindows
-        // The "switch on" transition is a full e-ink flash, unless refreshes are off or the
-        // user asked for less flashing. Then it's a crossfade.
-        let shouldFlash = animated && configuration.refresh.mode != .off && !reducesFlashing
-        if animated && !shouldFlash { crossfade(windows) }
+        if animated { crossfade(windows) }
         for window in windows { attach(to: window) }
         counter.reset()
-        if shouldFlash { refresh(.full) }
     }
 
     func disable(animated: Bool) {
@@ -170,10 +162,8 @@ final class PaperizeController: NSObject {
 
     // MARK: Refresh
 
-    var reducesFlashing: Bool {
-        if let reducesFlashingOverride { return reducesFlashingOverride }
-        guard configuration.refresh.respectsAccessibilitySettings else { return false }
-        return UIAccessibility.isReduceMotionEnabled || MADimFlashingLightsEnabled()
+    var reducesMotion: Bool {
+        configuration.refresh.respectsAccessibilitySettings && UIAccessibility.isReduceMotionEnabled
     }
 
     func refresh(_ requested: RefreshKind) {
@@ -187,7 +177,7 @@ final class PaperizeController: NSObject {
         }
 
         let kind = counter.resolve(requested, fullRefreshInterval: configuration.refresh.fullRefreshInterval)
-        let steps = Waveform.steps(for: kind, configuration: configuration.refresh, reducesFlashing: reducesFlashing)
+        let steps = Waveform.steps(for: kind, configuration: configuration.refresh, reducesMotion: reducesMotion)
         let freshGhosts = takeGhosts()
         fullRefreshEndsAt = kind == .full
             ? Date().addingTimeInterval(steps.reduce(0) { $0 + $1.duration })
@@ -195,10 +185,7 @@ final class PaperizeController: NSObject {
 
         for window in allWindows {
             guard let overlay = overlay(in: window) else { continue }
-            // A full refresh exists to clear ghosting, so it never shows a ghost
-            // (unless flashing is reduced, in which case the ghost fade replaces the flash).
-            let wantsGhost = kind == .partial || reducesFlashing
-            let ghost = wantsGhost ? freshGhosts[ObjectIdentifier(window)] : nil
+            let ghost = freshGhosts[ObjectIdentifier(window)]
             overlay.play(steps, ghost: ghost)
         }
     }
@@ -206,14 +193,13 @@ final class PaperizeController: NSObject {
     /// Snapshots each paperized window as it looks now, so the next refresh can ghost it.
     func captureGhosts() {
         guard isEnabled, configuration.refresh.mode != .off else { return }
-        // With reduced flashing, the ghost fade *is* the refresh, so it's needed even if ghosting is off.
-        guard configuration.refresh.showsGhosting || reducesFlashing else { return }
+        guard configuration.refresh.showsGhosting, !reducesMotion else { return }
         // Several view controllers appear at once during one transition. Only capture once.
         if let capturedAt = ghostsCapturedAt, Date().timeIntervalSince(capturedAt) < 0.1 { return }
 
         ghosts.removeAll()
         for window in allWindows where !window.isHidden {
-            // Skip windows mid-refresh: the snapshot would capture the flash, not the content.
+            // Skip windows mid-refresh to avoid capturing another ghost.
             guard let overlay = overlay(in: window), !overlay.isPlaying else { continue }
             if let snapshot = window.snapshotView(afterScreenUpdates: false) {
                 ghosts[ObjectIdentifier(window)] = snapshot
@@ -225,7 +211,7 @@ final class PaperizeController: NSObject {
         // Don't hold full-screen snapshots if no refresh follows (for example, a cancelled interactive pop).
         let lifetime = ghostLifetime
         Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(lifetime * 1_000_000_000))
+            try? await Task.sleep(for: .seconds(lifetime))
             guard let self, self.ghostsCapturedAt == capturedAt else { return }
             self.ghosts.removeAll()
             self.ghostsCapturedAt = nil
@@ -272,7 +258,7 @@ final class PaperizeController: NSObject {
 
     func viewControllerDidAppear(_ viewController: UIViewController) {
         guard isEnabled, configuration.refresh.mode == .automatic else { return }
-        // Keyboard and other system windows shouldn't make the page flash.
+        // Keyboard and other system windows shouldn't trigger a refresh.
         guard let window = viewController.viewIfLoaded?.window, overlay(in: window) != nil else { return }
         scheduleAutomaticRefresh()
     }

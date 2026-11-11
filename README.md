@@ -7,9 +7,8 @@ Paperize puts a touch-transparent layer over your app that turns it into paper:
 - **Grayscale**: every color is removed. Luminance is kept, so hierarchy still reads.
 - **Dimmed paper**: whites become an off-white paper tone, blacks lift to soft "ink", and
   you can add dimming and paper grain.
-- **E-ink refresh**: page changes play e-paper waveforms. Partial refreshes leave a fading
-  ghost of the previous screen, and every few refreshes a full *invert → black → paper*
-  flash clears it.
+- **Gentle refresh**: page changes can leave a fading ghost of the previous screen.
+  There are no screen flashes, inversions, or black/white refresh phases.
 
 It works for **UIKit, SwiftUI, and mixed apps**, including sheets, alerts, web views, maps, and
 video, without touching your views.
@@ -22,7 +21,7 @@ Paperize.enable()
 
 ## Requirements
 
-- iOS 15+
+- iOS 17+
 - Swift 5.9+ / Xcode 15+
 
 ## Installation
@@ -97,7 +96,7 @@ Paperize.disable()                          // restores everything, including th
 ```swift
 config.refresh = RefreshConfiguration(
     mode: .automatic,          // .off, .manual, or .automatic
-    fullRefreshInterval: 6,    // every 6th automatic refresh is a full flash (0 = never)
+    fullRefreshInterval: 6,    // every 6th automatic refresh uses a longer fade (0 = never)
     showsGhosting: true,
     ghostingIntensity: 0.22,
     speed: 1,
@@ -117,8 +116,8 @@ the hooks when you opt in to this mode.
 Trigger a refresh yourself:
 
 ```swift
-Paperize.refresh(.full)          // invert → black → paper flash
-Paperize.refresh(.partial)       // subtle update
+Paperize.refresh(.full)          // longer ghost fade
+Paperize.refresh(.partial)       // shorter ghost fade
 Paperize.refresh()               // .automatic: partial, with full every N times
 
 // Snapshot the screen first so the old content ghosts out:
@@ -134,9 +133,12 @@ PageView(page: page)
     .paperizeRefresh(on: page)
 ```
 
-> **Accessibility:** a full refresh is a black/white flash. With `respectsAccessibilitySettings`
-> on (the default), Paperize replaces flashes with a gentle ghost fade when **Reduce Motion** or
-> **Dim Flashing Lights** is enabled. Please keep this on.
+Refreshes only fade snapshots of previous content. With `respectsAccessibilitySettings`
+on (the default), **Reduce Motion** disables ghost animations. Enabling or disabling Paperize
+crossfades the appearance when `animated` is `true`.
+
+Without app-wide Paperize, `.paperizeRefresh(on:)` has no visual effect. Scoped `.paperize()`
+continues to apply the static paper appearance.
 
 ### Scoped effect and Xcode Previews
 
@@ -165,11 +167,11 @@ It refers to this repository by its folder name, so keep the clone in a folder n
 ## How it works
 
 Each app window gets a `PaperOverlayView` at the very top (by `zPosition`, so modals added later
-stay below it). It ignores touches and accessibility. It's a stack of Core Animation compositing
+stay below it). It ignores touches and accessibility. Its `CATransformLayer` backing keeps the
+blend layers from flattening into an opaque surface. It's a stack of Core Animation compositing
 filters, and each one blends with everything drawn beneath it:
 
 ```
-flash      difference / solid   refresh waveform
 ghost      normal, low α        previous screen (already paperized), fading
 grain      multiply             paper texture
 dim        normal, black α      front light off

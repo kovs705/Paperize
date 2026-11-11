@@ -6,7 +6,6 @@ enum BlendMode {
     static let saturation = "saturationBlendMode"
     static let lighten = "lightenBlendMode"
     static let multiply = "multiplyBlendMode"
-    static let difference = "differenceBlendMode"
 }
 
 /// The full-window stack of blend layers that turns whatever is drawn below it into "paper".
@@ -14,6 +13,10 @@ enum BlendMode {
 /// It ignores touches and accessibility, and it sits above every sibling view through a large
 /// `zPosition`, so views added to the window later (modal containers, for example) stay below it.
 final class PaperOverlayView: UIView {
+
+    // Keep the blend layers in the window's compositing context. A normal backing layer
+    // flattens them into an opaque image before compositing it over the app's content.
+    override static var layerClass: AnyClass { CATransformLayer.self }
 
     /// Larger than anything a sane app would use, so the overlay always renders on top.
     static let zPosition: CGFloat = 1_000_000
@@ -27,12 +30,11 @@ final class PaperOverlayView: UIView {
     /// Holds a snapshot of the previous screen. The snapshot already went through the paper
     /// stack when it was captured, so it sits *above* the stack to avoid being processed twice.
     let ghostContainer = UIView()
-    let flashView = UIView()
 
     private(set) var configuration: PaperizeConfiguration
     private var playback: Task<Void, Never>?
 
-    /// `true` while a refresh waveform is on screen. Snapshots taken now would capture the flash.
+    /// `true` while a previous-screen snapshot is fading.
     private(set) var isPlaying = false
 
     /// The window's own `overrideUserInterfaceStyle` before Paperize forced light mode.
@@ -50,7 +52,7 @@ final class PaperOverlayView: UIView {
         layer.zPosition = Self.zPosition
         autoresizingMask = [.flexibleWidth, .flexibleHeight]
 
-        for view in [grayscaleView, inkView, paperView, dimView, grainView, ghostContainer, flashView] {
+        for view in [grayscaleView, inkView, paperView, dimView, grainView, ghostContainer] {
             view.frame = bounds
             view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             view.isUserInteractionEnabled = false
@@ -70,8 +72,6 @@ final class PaperOverlayView: UIView {
 
         grainView.backgroundColor = UIColor(patternImage: GrainTexture.image)
         grainView.layer.compositingFilter = BlendMode.multiply
-
-        flashView.isHidden = true
 
         apply(configuration)
     }
@@ -119,7 +119,7 @@ final class PaperOverlayView: UIView {
                 guard let self, !Task.isCancelled else { return }
                 self.render(step)
                 if step.duration > 0 {
-                    try? await Task.sleep(nanoseconds: UInt64(step.duration * 1_000_000_000))
+                    try? await Task.sleep(for: .seconds(step.duration))
                 }
             }
             guard let self, !Task.isCancelled else { return }
@@ -140,26 +140,6 @@ final class PaperOverlayView: UIView {
 
     func render(_ step: WaveformStep) {
         ghostContainer.alpha = step.ghostAlpha.clamped01
-
-        switch step.flash {
-        case .clear:
-            flashView.isHidden = true
-        case .invert:
-            show(flash: .white, alpha: 1, filter: BlendMode.difference)
-        case .black:
-            show(flash: .black, alpha: 1, filter: nil)
-        case .paper:
-            show(flash: configuration.paperColor, alpha: 1, filter: nil)
-        case .dim(let alpha):
-            show(flash: .black, alpha: alpha.clamped01, filter: nil)
-        }
-    }
-
-    private func show(flash color: UIColor, alpha: CGFloat, filter: String?) {
-        flashView.backgroundColor = color
-        flashView.alpha = alpha
-        flashView.layer.compositingFilter = filter
-        flashView.isHidden = false
     }
 
     private func setGhost(_ ghost: UIView?) {

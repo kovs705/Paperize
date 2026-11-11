@@ -1,4 +1,3 @@
-import MediaAccessibility
 import SwiftUI
 
 public extension View {
@@ -34,15 +33,15 @@ public extension View {
 
     /// Plays an e-ink refresh whenever `value` changes.
     ///
-    /// When app-wide Paperize is enabled this triggers ``Paperize/refresh(_:)``. Otherwise
-    /// the refresh flash is drawn over this view only, which works with ``paperize(_:configuration:)``
-    /// and in Xcode Previews.
+    /// When app-wide Paperize is enabled this fades a snapshot of the previous screen.
+    /// Otherwise it has no visual effect. The configuration argument is retained for
+    /// source compatibility; app-wide refreshes use ``Paperize/configuration``.
     func paperizeRefresh<Value: Equatable>(
         on value: Value,
         kind: RefreshKind = .automatic,
         configuration: RefreshConfiguration = .default
     ) -> some View {
-        modifier(PaperizeRefreshModifier(value: value, kind: kind, configuration: configuration))
+        modifier(PaperizeRefreshModifier(value: value, kind: kind))
     }
 }
 
@@ -61,20 +60,6 @@ struct PaperizeModifier: ViewModifier {
                 }
             }
             .compositingGroup()
-            .environment(\.isInsidePaperize, isEnabled)
-    }
-}
-
-private struct InsidePaperizeKey: EnvironmentKey {
-    static let defaultValue = false
-}
-
-extension EnvironmentValues {
-    /// `true` inside `.paperize()`. A refresh flash drawn there is processed by the paper
-    /// layers above it, so it must draw plain white instead of the paper color.
-    var isInsidePaperize: Bool {
-        get { self[InsidePaperizeKey.self] }
-        set { self[InsidePaperizeKey.self] = newValue }
     }
 }
 
@@ -110,8 +95,8 @@ struct PaperizeAppModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onAppear { sync() }
-            .onChange(of: isEnabled) { _ in sync() }
-            .onChange(of: configuration) { _ in sync() }
+            .onChange(of: isEnabled) { sync() }
+            .onChange(of: configuration) { sync() }
     }
 
     @MainActor
@@ -133,77 +118,12 @@ struct PaperizeAppModifier: ViewModifier {
 struct PaperizeRefreshModifier<Value: Equatable>: ViewModifier {
     let value: Value
     let kind: RefreshKind
-    let configuration: RefreshConfiguration
-
-    @State private var step: WaveformStep = .idle
-    @State private var counter = RefreshCounter()
-    @State private var generation = 0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.isInsidePaperize) private var isInsidePaperize
 
     func body(content: Content) -> some View {
-        content
-            .overlay {
-                FlashLayer(
-                    step: step,
-                    paperColor: isInsidePaperize ? .white : Color(uiColor: PaperizeConfiguration.default.paperColor)
-                )
-            }
-            .onChange(of: value) { _ in trigger() }
-    }
-
-    @MainActor
-    private func trigger() {
-        if Paperize.isEnabled {
-            // `onChange` runs before the new frame is on screen, so the snapshot taken here
-            // is the outgoing content. It becomes the ghost.
-            Paperize.performWithRefresh(kind) {}
-            return
-        }
-        guard configuration.mode != .off else { return }
-
-        let resolved = counter.resolve(kind, fullRefreshInterval: configuration.fullRefreshInterval)
-        let reducesFlashing = configuration.respectsAccessibilitySettings
-            && (reduceMotion || MADimFlashingLightsEnabled())
-        let steps = Waveform.steps(for: resolved, configuration: configuration, reducesFlashing: reducesFlashing)
-
-        generation += 1
-        let current = generation
-        Task { @MainActor in
-            for next in steps {
-                guard current == generation else { return }
-                step = next
-                if next.duration > 0 {
-                    try? await Task.sleep(nanoseconds: UInt64(next.duration * 1_000_000_000))
-                }
+        content.onChange(of: value) {
+            if Paperize.isEnabled {
+                Paperize.performWithRefresh(kind) {}
             }
         }
-    }
-}
-
-/// Draws one waveform step over a SwiftUI view. There's no screen snapshot to ghost here,
-/// so the ghost phase is drawn as a fading paper wash.
-struct FlashLayer: View {
-    let step: WaveformStep
-    let paperColor: Color
-
-    var body: some View {
-        ZStack {
-            paperColor.opacity(Double(step.ghostAlpha.clamped01))
-            switch step.flash {
-            case .clear:
-                Color.clear
-            case .invert:
-                Color.white.blendMode(.difference)
-            case .black:
-                Color.black
-            case .paper:
-                paperColor
-            case .dim(let alpha):
-                Color.black.opacity(Double(alpha))
-            }
-        }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
     }
 }

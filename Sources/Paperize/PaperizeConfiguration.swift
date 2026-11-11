@@ -133,8 +133,7 @@ public struct RefreshConfiguration: Equatable, Sendable {
 
     public var mode: Mode
 
-    /// Every N-th automatic refresh is a full black/white flash. The others are quick partial
-    /// refreshes. `0` means automatic refreshes are never full.
+    /// Every N-th automatic refresh uses a longer ghost fade. `0` keeps every fade short.
     public var fullRefreshInterval: Int
 
     /// Shows a faint image of the previous screen that fades out after a partial refresh.
@@ -146,8 +145,7 @@ public struct RefreshConfiguration: Equatable, Sendable {
     /// Playback speed multiplier. `2` plays refreshes twice as fast.
     public var speed: Double
 
-    /// When `true`, full flashes are replaced by a gentle ghost fade if the user turned on
-    /// *Reduce Motion* or *Dim Flashing Lights*. Strongly recommended.
+    /// When `true`, Reduce Motion disables ghost animations.
     public var respectsAccessibilitySettings: Bool
 
     public init(
@@ -166,7 +164,7 @@ public struct RefreshConfiguration: Equatable, Sendable {
         self.respectsAccessibilitySettings = respectsAccessibilitySettings
     }
 
-    /// Automatic partial refreshes with ghosting, and a full flash every 6th time.
+    /// Automatic ghost fades, with a longer fade every 6th time.
     public static let `default` = RefreshConfiguration()
 
     /// Refreshes only when you ask for them.
@@ -183,7 +181,7 @@ public enum RefreshKind: Equatable, Sendable {
     case automatic
     /// A quick, subtle update that leaves a fading ghost of the previous screen.
     case partial
-    /// The classic e-reader flash: invert, black, then clean paper. Removes all ghosting.
+    /// A longer fade of the previous screen.
     case full
 }
 

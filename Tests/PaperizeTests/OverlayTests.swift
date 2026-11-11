@@ -37,42 +37,71 @@ final class OverlayTests: XCTestCase {
         XCTAssertEqual(overlay.inkView.backgroundColor, config.inkColor)
     }
 
-    func testRenderFlashPhases() {
+    func testRenderOnlyChangesGhostOpacity() {
         let overlay = PaperOverlayView(configuration: .default)
-
-        overlay.render(WaveformStep(flash: .invert, ghostAlpha: 0, duration: 0))
-        XCTAssertFalse(overlay.flashView.isHidden)
-        XCTAssertEqual(overlay.flashView.layer.compositingFilter as? String, BlendMode.difference)
-
-        overlay.render(WaveformStep(flash: .black, ghostAlpha: 0.3, duration: 0))
-        XCTAssertNil(overlay.flashView.layer.compositingFilter)
-        XCTAssertEqual(overlay.flashView.backgroundColor, .black)
+        overlay.render(WaveformStep(ghostAlpha: 0.3, duration: 0))
         XCTAssertEqual(overlay.ghostContainer.alpha, 0.3, accuracy: 0.001)
-
         overlay.render(.idle)
-        XCTAssertTrue(overlay.flashView.isHidden)
         XCTAssertEqual(overlay.ghostContainer.alpha, 0)
     }
 
     func testPlaybackEndsAtRestAndDropsGhost() async throws {
         let overlay = PaperOverlayView(configuration: .default)
-        let steps = Waveform.steps(for: .partial, configuration: .default, reducesFlashing: false)
+        let steps = Waveform.steps(for: .partial, configuration: .default, reducesMotion: false)
         overlay.play(steps, ghost: UIView())
         XCTAssertEqual(overlay.ghostContainer.subviews.count, 1)
 
-        try await Task.sleep(nanoseconds: 600_000_000)
+        try await Task.sleep(for: .milliseconds(600))
 
-        XCTAssertTrue(overlay.flashView.isHidden)
         XCTAssertTrue(overlay.ghostContainer.subviews.isEmpty)
         XCTAssertFalse(overlay.isPlaying)
     }
 
-    func testGhostSitsAbovePaperStackButBelowFlash() {
+    func testGhostSitsAbovePaperStack() {
         let overlay = PaperOverlayView(configuration: .default)
         let order = overlay.subviews
         let ghost = try? XCTUnwrap(order.firstIndex(of: overlay.ghostContainer))
         XCTAssertGreaterThan(ghost ?? -1, order.firstIndex(of: overlay.grainView) ?? .max)
-        XCTAssertLessThan(ghost ?? .max, order.firstIndex(of: overlay.flashView) ?? -1)
+    }
+
+    func testPaperOverlayPreservesVisibleContentContrast() async throws {
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first else {
+            throw XCTSkip("Rendering requires an application-hosted test with a window scene")
+        }
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 100, height: 100)
+        let content = UIViewController()
+        content.view.backgroundColor = .white
+        let black = UIView(frame: CGRect(x: 0, y: 0, width: 50, height: 100))
+        black.backgroundColor = .black
+        content.view.addSubview(black)
+        window.rootViewController = content
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        var configuration = PaperizeConfiguration.ereader
+        configuration.grain = 0
+        let overlay = PaperOverlayView(configuration: configuration)
+        overlay.frame = window.bounds
+        window.addSubview(overlay)
+        window.layoutIfNeeded()
+        try await Task.sleep(for: .milliseconds(100))
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let image = UIGraphicsImageRenderer(bounds: window.bounds, format: format).image { _ in
+            window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+        }
+        let cgImage = try XCTUnwrap(image.cgImage)
+        var pixels = [UInt8](repeating: 0, count: 100 * 100 * 4)
+        let context = try XCTUnwrap(CGContext(
+            data: &pixels, width: 100, height: 100, bitsPerComponent: 8,
+            bytesPerRow: 400, space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ))
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: 100, height: 100))
+        let ink = Int(pixels[(50 * 100 + 25) * 4])
+        let paper = Int(pixels[(50 * 100 + 75) * 4])
+        XCTAssertGreaterThan(paper - ink, 100, "Paperize must preserve content, not render a flat overlay (ink: \(ink), paper: \(paper))")
     }
 }
 
