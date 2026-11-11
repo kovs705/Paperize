@@ -10,7 +10,7 @@ let package = Package(
         .library(name: "Paperize", targets: ["Paperize"])
     ],
     targets: [
-        .target(name: "Paperize"),
+        .target(name: "Paperize", resources: [.process("PrivacyInfo.xcprivacy")]),
         .testTarget(name: "PaperizeTests", dependencies: ["Paperize"])
     ]
 )
