@@ -63,6 +63,53 @@ struct MyApp: App {
 `paperizeApp` keeps the **app-wide** effect in sync with a value, so it covers UIKit screens,
 sheets, and alerts too.
 
+## Saved settings sheet
+
+Create one `PaperizeSettings` instance in your app and share it with the root and editor:
+
+```swift
+@State private var paperSettings = PaperizeSettings(defaultConfiguration: .ereader)
+@AppStorage("paperMode") private var paperMode = false
+@State private var showsPaperSettings = false
+
+var body: some View {
+    ContentView()
+        .paperizeApp(paperMode, configuration: paperSettings.configuration)
+        .toolbar {
+            Button("Paper appearance") { showsPaperSettings = true }
+        }
+        .paperizeSettingsSheet(isPresented: $showsPaperSettings, settings: paperSettings)
+}
+```
+
+The native sheet includes presets, paper and ink colors, dimming, grain, grayscale,
+light appearance, and ghosting controls. Edits save immediately; Done and swipe dismissal
+both retain changes. Reset restores the initial configuration supplied by the app.
+Opening the editor does not turn Paper mode on. Its window is temporarily exempt from
+the effect so the controls remain readable, including with black paper or full dimming;
+the sample previews edits and the app's effect returns when the sheet closes. If a
+saved configuration would hide all content (for example, 100% dimming or black paper),
+app-wide Paperize temporarily leaves windows in their original appearance. The saved
+values remain intact, the editor explains the fallback, and readable edits restore the
+effect automatically, including after relaunch.
+
+By default, settings use `UserDefaults.standard` and the key `Paperize.configuration`.
+Each app therefore has independent settings. Supply `defaults:` and `storageKey:` to
+use an app group or separate profiles. Share the same settings instance between views;
+separate instances do not synchronize changes automatically. A corrupt or unsupported
+saved payload falls back to the app's initial configuration.
+
+For UIKit, embed the same editor in a hosting controller:
+
+```swift
+let editor = UIHostingController(rootView: PaperizeSettingsView(settings: paperSettings))
+present(editor, animated: true)
+```
+
+A UIKit host can observe `paperSettings.configuration` with Observation to update
+`Paperize.configuration` live, or apply the saved value when its editor closes.
+The editor's preview works even when Paper mode is off.
+
 ## Presets
 
 | Preset | Look |
