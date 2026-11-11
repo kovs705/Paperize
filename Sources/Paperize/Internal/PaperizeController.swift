@@ -16,6 +16,7 @@ final class PaperizeController: NSObject {
     /// While a full refresh is on screen, other refreshes are dropped so they don't cut it short.
     private var fullRefreshEndsAt: Date?
     private let excludedWindows = NSHashTable<UIWindow>.weakObjects()
+    private let editorWindows = NSMapTable<UIWindow, NSNumber>.weakToStrongObjects()
 
     /// Ghosts older than this are considered stale, for example after a cancelled interactive pop.
     private let ghostLifetime: TimeInterval = 1.5
@@ -70,9 +71,10 @@ final class PaperizeController: NSObject {
             ViewControllerHooks.install()
         }
         for window in allWindows {
-            if let overlay = overlay(in: window) {
-                overlay.apply(configuration)
-                applyAppearance(to: window, overlay: overlay)
+            if shouldDecorate(window) {
+                attach(to: window)
+            } else {
+                detach(from: window)
             }
         }
     }
@@ -91,6 +93,8 @@ final class PaperizeController: NSObject {
 
     func shouldDecorate(_ window: UIWindow) -> Bool {
         !excludedWindows.contains(window) && !Self.isSystemWindow(window)
+            && (editorWindows.object(forKey: window)?.intValue ?? 0) == 0
+            && PaperizeAppearance(configuration: configuration).preservesVisibility
     }
 
     /// UIKit's own helper windows (keyboard, text effects, and so on). Their content is often
@@ -147,6 +151,22 @@ final class PaperizeController: NSObject {
             detach(from: window)
         } else {
             excludedWindows.remove(window)
+            if isEnabled, shouldDecorate(window) { attach(to: window) }
+        }
+    }
+
+    func beginEditing(in window: UIWindow) {
+        let readers = editorWindows.object(forKey: window)?.intValue ?? 0
+        editorWindows.setObject(NSNumber(value: readers + 1), forKey: window)
+        detach(from: window)
+    }
+
+    func endEditing(in window: UIWindow) {
+        let readers = editorWindows.object(forKey: window)?.intValue ?? 0
+        if readers > 1 {
+            editorWindows.setObject(NSNumber(value: readers - 1), forKey: window)
+        } else {
+            editorWindows.removeObject(forKey: window)
             if isEnabled, shouldDecorate(window) { attach(to: window) }
         }
     }

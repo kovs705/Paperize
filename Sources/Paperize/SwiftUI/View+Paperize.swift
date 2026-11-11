@@ -31,6 +31,18 @@ public extension View {
         modifier(PaperizeAppModifier(isEnabled: isEnabled, configuration: configuration))
     }
 
+    /// Presents the shared, automatically saved configuration editor.
+    /// Opening this sheet does not change whether Paperize is enabled.
+    @MainActor
+    func paperizeSettingsSheet(
+        isPresented: Binding<Bool>,
+        settings: PaperizeSettings
+    ) -> some View {
+        sheet(isPresented: isPresented) {
+            PaperizeSettingsView(settings: settings)
+        }
+    }
+
     /// Plays an e-ink refresh whenever `value` changes.
     ///
     /// When app-wide Paperize is enabled this fades a snapshot of the previous screen.
