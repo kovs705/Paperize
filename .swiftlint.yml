@@ -1,0 +1,104 @@
+disabled_rules:
+  - large_tuple
+  - shorthand_operator
+  - multiple_closures_with_trailing_closure # conflicts with SwiftUI syntax
+  - indentation_width
+  - discouraged_direct_init
+
+opt_in_rules:
+  - empty_count               # isEmpty instead count == 0
+  - empty_string
+  - force_cast                # avoid as!
+  - force_unwrapping          # avoid `!`, see CLAUDE.md
+  - todo                      # checkmark TODO / FIXME
+  - implicit_return
+  - redundant_nil_coalescing
+  - redundant_type_annotation
+  - modifier_order
+  - sorted_imports
+  - discouraged_optional_boolean
+  - unavailable_function
+  - vertical_parameter_alignment_on_call
+  - vertical_whitespace       # no more than 2 empty lines in a row
+
+# `explicit_self` and `unused_import` are analyzer rules: they only work with
+# `swiftlint analyze --compiler-log-path <xcodebuild log>`, so they are not listed here.
+
+excluded:
+  - Carthage
+  - Pods
+  - .build
+  - xcodegen
+  - "**/Generated"
+  - "**/ColorAssets.swift"
+  - "**/ImageAssets.swift"
+
+line_length:
+  warning: 140
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+  ignores_function_declarations: true
+
+colon:
+  apply_to_dictionaries: false
+
+custom_rules:
+  no_objcMembers:
+    name: "@objcMembers"
+    regex: "@objcMembers"
+    message: "Explicitly use @objc on each member you want to expose to Objective-C"
+    severity: error
+  no_file_literal:
+    name: "#file is disallowed"
+    regex: "(\\b#file\\b)"
+    match_kinds:
+      - identifier
+    message: "Instead of #file, use #fileID"
+  no_filepath_literal:
+    name: "#filePath is disallowed"
+    regex: "(\\b#filePath\\b)"
+    match_kinds:
+      - identifier
+    message: "Instead of #filePath, use #fileID."
+  # Modern API rules from CLAUDE.md
+  no_foreground_color:
+    name: "foregroundColor is deprecated"
+    regex: "\\.foregroundColor\\("
+    message: "Use foregroundStyle() instead of foregroundColor()."
+    severity: warning
+  no_corner_radius:
+    name: "cornerRadius is deprecated"
+    regex: "\\.cornerRadius\\("
+    message: "Use clipShape(.rect(cornerRadius:)) instead of cornerRadius()."
+    severity: warning
+  no_dispatch_main:
+    name: "DispatchQueue.main is disallowed"
+    regex: "DispatchQueue\\.main"
+    message: "Use Swift concurrency (@MainActor / Task) instead of DispatchQueue.main."
+    severity: warning
+  no_task_sleep_nanoseconds:
+    name: "Task.sleep(nanoseconds:) is disallowed"
+    regex: "Task\\.sleep\\(nanoseconds"
+    message: "Use Task.sleep(for:) instead."
+    severity: warning
+  no_navigation_view:
+    name: "NavigationView is deprecated"
+    regex: "\\bNavigationView\\b"
+    message: "Use NavigationStack instead of NavigationView."
+    severity: warning
+  no_observable_object:
+    name: "ObservableObject is discouraged"
+    regex: "\\bObservableObject\\b"
+    message: "Prefer @Observable classes. Legacy AbstractVM-based code is the only exception."
+    severity: warning
+  no_string_format:
+    name: "String(format:) is disallowed"
+    regex: "String\\(format:"
+    message: "Use FormatStyle, e.g. Text(value, format: .number.precision(.fractionLength(2)))."
+    severity: warning
+  no_uiscreen_main:
+    name: "UIScreen.main is disallowed"
+    regex: "UIScreen\\.main"
+    message: "Do not read screen size from UIScreen.main; use containerRelativeFrame or layout APIs."
+    severity: warning

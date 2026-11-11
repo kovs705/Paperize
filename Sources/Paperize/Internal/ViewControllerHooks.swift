@@ -38,12 +38,12 @@ extension UIViewController {
 
     // After the exchange, calling `paperize_*` from inside runs UIKit's original implementation.
 
-    @objc dynamic fileprivate func paperize_viewWillAppear(_ animated: Bool) {
+    @objc fileprivate dynamic func paperize_viewWillAppear(_ animated: Bool) {
         paperize_viewWillAppear(animated)
         PaperizeController.shared.viewControllerWillAppear(self)
     }
 
-    @objc dynamic fileprivate func paperize_viewDidAppear(_ animated: Bool) {
+    @objc fileprivate dynamic func paperize_viewDidAppear(_ animated: Bool) {
         paperize_viewDidAppear(animated)
         PaperizeController.shared.viewControllerDidAppear(self)
     }

@@ -1,5 +1,5 @@
-import XCTest
 @testable import Paperize
+import XCTest
 
 final class ConfigurationTests: XCTestCase {
 

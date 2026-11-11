@@ -1,6 +1,6 @@
+@testable import Paperize
 import UIKit
 import XCTest
-@testable import Paperize
 
 @MainActor
 final class OverlayTests: XCTestCase {

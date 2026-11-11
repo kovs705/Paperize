@@ -45,19 +45,19 @@ enum Waveform {
             steps = [
                 WaveformStep(flash: .invert, ghostAlpha: 0, duration: 0.10),
                 WaveformStep(flash: .black, ghostAlpha: 0, duration: 0.07),
-                WaveformStep(flash: .paper, ghostAlpha: 0, duration: 0.08),
+                WaveformStep(flash: .paper, ghostAlpha: 0, duration: 0.08)
             ]
         case .full:
             // Without flashing, a "full" refresh is a slower, cleaner ghost fade.
             steps = [
                 WaveformStep(flash: .clear, ghostAlpha: max(ghost, 0.2), duration: 0.12),
-                WaveformStep(flash: .clear, ghostAlpha: max(ghost, 0.2) * 0.5, duration: 0.12),
+                WaveformStep(flash: .clear, ghostAlpha: max(ghost, 0.2) * 0.5, duration: 0.12)
             ]
         case .partial, .automatic:
             steps = [
                 WaveformStep(flash: reducesFlashing ? .clear : .dim(0.10), ghostAlpha: ghost, duration: 0.05),
                 WaveformStep(flash: .clear, ghostAlpha: ghost * 0.6, duration: 0.08),
-                WaveformStep(flash: .clear, ghostAlpha: ghost * 0.3, duration: 0.08),
+                WaveformStep(flash: .clear, ghostAlpha: ghost * 0.3, duration: 0.08)
             ]
         }
 

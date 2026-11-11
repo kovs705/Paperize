@@ -9,7 +9,7 @@ import PackageDescription
 let package = Package(
     name: "PaperizeDemo",
     platforms: [
-        .iOS("16.0"),
+        .iOS("16.0")
     ],
     products: [
         .iOSApplication(
@@ -22,26 +22,26 @@ let package = Package(
             accentColor: .presetColor(.indigo),
             supportedDeviceFamilies: [
                 .pad,
-                .phone,
+                .phone
             ],
             supportedInterfaceOrientations: [
                 .portrait,
                 .landscapeRight,
                 .landscapeLeft,
-                .portraitUpsideDown(.when(deviceFamilies: [.pad])),
+                .portraitUpsideDown(.when(deviceFamilies: [.pad]))
             ]
-        ),
+        )
     ],
     dependencies: [
-        .package(path: "../.."),
+        .package(path: "../..")
     ],
     targets: [
         .executableTarget(
             name: "AppModule",
             dependencies: [
-                .product(name: "Paperize", package: "Paperize"),
+                .product(name: "Paperize", package: "Paperize")
             ],
             path: "."
-        ),
+        )
     ]
 )

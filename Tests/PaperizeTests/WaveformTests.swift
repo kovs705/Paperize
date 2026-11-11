@@ -1,5 +1,5 @@
-import XCTest
 @testable import Paperize
+import XCTest
 
 final class WaveformTests: XCTestCase {
 
@@ -61,7 +61,7 @@ final class RefreshCounterTests: XCTestCase {
         let kinds = (0..<12).map { _ in counter.resolve(.automatic, fullRefreshInterval: 6) }
         XCTAssertEqual(kinds, [
             .partial, .partial, .partial, .partial, .partial, .full,
-            .partial, .partial, .partial, .partial, .partial, .full,
+            .partial, .partial, .partial, .partial, .partial, .full
         ])
     }
 

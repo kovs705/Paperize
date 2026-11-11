@@ -19,7 +19,7 @@ struct JournalView: View {
     private let habits = [
         Habit(name: "Stretch", symbol: "figure.flexibility", streak: 10, best: 10, week: 7, total: 108),
         Habit(name: "Read", symbol: "book", streak: 4, best: 21, week: 5, total: 212),
-        Habit(name: "Walk", symbol: "figure.walk", streak: 2, best: 14, week: 3, total: 64),
+        Habit(name: "Walk", symbol: "figure.walk", streak: 2, best: 14, week: 3, total: 64)
     ]
 
     var body: some View {

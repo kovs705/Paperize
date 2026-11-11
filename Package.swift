@@ -4,13 +4,13 @@ import PackageDescription
 let package = Package(
     name: "Paperize",
     platforms: [
-        .iOS(.v17),
+        .iOS(.v17)
     ],
     products: [
-        .library(name: "Paperize", targets: ["Paperize"]),
+        .library(name: "Paperize", targets: ["Paperize"])
     ],
     targets: [
         .target(name: "Paperize"),
-        .testTarget(name: "PaperizeTests", dependencies: ["Paperize"]),
+        .testTarget(name: "PaperizeTests", dependencies: ["Paperize"])
     ]
 )
